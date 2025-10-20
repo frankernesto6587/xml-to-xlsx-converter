@@ -2,6 +2,7 @@ import { useState } from 'react';
 import FileUpload from './components/FileUpload';
 import { parseXML } from './utils/xmlParser';
 import { generateXLSX, previewData, getSummary } from './utils/xlsxGenerator';
+import { extractXMLFromZip, isZipFile } from './utils/zipHandler';
 
 function App() {
   const [data, setData] = useState(null);
@@ -10,15 +11,41 @@ function App() {
   const [summary, setSummary] = useState(null);
   const [processing, setProcessing] = useState(false);
 
-  const handleFileSelect = async (xmlContent, filename) => {
+  const handleFileSelect = async (file) => {
     setProcessing(true);
     setError(null);
 
     try {
+      let xmlContent;
+      let actualFileName = file.name;
+
+      // Check if file is ZIP
+      const isZip = await isZipFile(file);
+
+      if (isZip) {
+        // Extract XML from ZIP
+        const extracted = await extractXMLFromZip(file);
+        xmlContent = extracted.content;
+        actualFileName = extracted.fileName;
+
+        // Show info if multiple XML files were found
+        if (extracted.totalFiles > 1) {
+          console.log(`Se encontraron ${extracted.totalFiles} archivos XML. Procesando: ${actualFileName}`);
+        }
+      } else {
+        // Read XML file directly
+        xmlContent = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = (e) => reject(new Error('Error al leer el archivo'));
+          reader.readAsText(file);
+        });
+      }
+
       // Parse XML
       const parsedData = parseXML(xmlContent);
       setData(parsedData);
-      setFileName(filename);
+      setFileName(actualFileName);
 
       // Generate summary
       const summaryData = getSummary(parsedData);
@@ -59,10 +86,10 @@ function App() {
             Mer<span className="text-cyan-400">X</span>bit
           </h1>
           <p className="text-xl text-gray-300 mb-2">
-            Conversor XML a XLSX
+            Conversor XML/ZIP a XLSX
           </p>
           <p className="text-sm text-gray-400">
-            Convierte extractos bancarios de XML a Excel
+            Convierte extractos bancarios de XML o ZIP a Excel
           </p>
         </div>
 

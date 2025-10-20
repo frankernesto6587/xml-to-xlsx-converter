@@ -40,17 +40,19 @@ export default function FileUpload({ onFileSelect }) {
   }, []);
 
   const processFile = (file) => {
-    if (!file.name.endsWith('.xml')) {
-      alert('Por favor selecciona un archivo XML');
+    const isXML = file.name.toLowerCase().endsWith('.xml');
+    const isZIP = file.name.toLowerCase().endsWith('.zip');
+
+    if (!isXML && !isZIP) {
+      alert('Por favor selecciona un archivo XML o ZIP');
       return;
     }
 
     setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      onFileSelect(e.target.result, file.name);
-    };
-    reader.readAsText(file);
+
+    // Pass the file object directly to parent
+    // Parent will handle ZIP extraction if needed
+    onFileSelect(file);
   };
 
   return (
@@ -87,7 +89,7 @@ export default function FileUpload({ onFileSelect }) {
 
           <div>
             <p className="text-lg font-medium text-gray-200">
-              Arrastra tu archivo XML aquí
+              Arrastra tu archivo XML o ZIP aquí
             </p>
             <p className="text-sm text-gray-400 mt-1">
               o haz clic para seleccionar
@@ -96,7 +98,7 @@ export default function FileUpload({ onFileSelect }) {
 
           <input
             type="file"
-            accept=".xml"
+            accept=".xml,.zip"
             onChange={handleFileInput}
             className="hidden"
             id="file-input"
