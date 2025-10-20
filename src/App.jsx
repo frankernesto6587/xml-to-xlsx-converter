@@ -10,55 +10,105 @@ function App() {
   const [error, setError] = useState(null);
   const [summary, setSummary] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [filesProcessed, setFilesProcessed] = useState(0);
 
   // Pagination and filter
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleFileSelect = async (file) => {
+  const handleFileSelect = async (files) => {
     setProcessing(true);
     setError(null);
 
     try {
-      let xmlContent;
-      let actualFileName = file.name;
+      // Convert to array if single file
+      const filesArray = Array.isArray(files) ? files : [files];
+      const multipleFiles = filesArray.length > 1;
 
-      // Check if file is ZIP
-      const isZip = await isZipFile(file);
+      // Process each file
+      const allParsedData = [];
 
-      if (isZip) {
-        // Extract XML from ZIP
-        const extracted = await extractXMLFromZip(file);
-        xmlContent = extracted.content;
-        actualFileName = extracted.fileName;
+      for (const file of filesArray) {
+        let xmlContent;
+        let actualFileName = file.name;
 
-        // Show info if multiple XML files were found
-        if (extracted.totalFiles > 1) {
-          console.log(`Se encontraron ${extracted.totalFiles} archivos XML. Procesando: ${actualFileName}`);
+        // Check if file is ZIP
+        const isZip = await isZipFile(file);
+
+        if (isZip) {
+          // Extract XML from ZIP
+          const extracted = await extractXMLFromZip(file);
+          xmlContent = extracted.content;
+          actualFileName = extracted.fileName;
+
+          // Show info if multiple XML files were found
+          if (extracted.totalFiles > 1) {
+            console.log(`Se encontraron ${extracted.totalFiles} archivos XML. Procesando: ${actualFileName}`);
+          }
+        } else {
+          // Read XML file directly
+          xmlContent = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(new Error('Error al leer el archivo'));
+            reader.readAsText(file);
+          });
         }
-      } else {
-        // Read XML file directly
-        xmlContent = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.onerror = (e) => reject(new Error('Error al leer el archivo'));
-          reader.readAsText(file);
-        });
+
+        // Parse XML
+        const parsedData = parseXML(xmlContent);
+        allParsedData.push(parsedData);
       }
 
-      // Parse XML
-      const parsedData = parseXML(xmlContent);
-      setData(parsedData);
-      setFileName(actualFileName);
+      // Combine all data
+      let combinedData;
+
+      if (multipleFiles) {
+        // When multiple files: assume saldoInicial = 0
+        const allTransactions = [];
+        const firstFile = allParsedData[0];
+
+        // Collect all transactions from all files
+        allParsedData.forEach(parsedData => {
+          allTransactions.push(...parsedData.transactions);
+        });
+
+        // Sort by date (parse date in DD/MM/YYYY format)
+        allTransactions.sort((a, b) => {
+          const parseDate = (dateStr) => {
+            if (!dateStr) return new Date(0);
+            const [day, month, year] = dateStr.split('/');
+            return new Date(year, month - 1, day);
+          };
+          return parseDate(a.fecha) - parseDate(b.fecha);
+        });
+
+        combinedData = {
+          saldoInicial: { importe: '0.00', tipo: '' },
+          transactions: allTransactions,
+          saldosFinales: firstFile.saldosFinales // Use finals from first file
+        };
+
+        setFilesProcessed(filesArray.length);
+        setFileName(`${filesArray.length} archivos combinados`);
+      } else {
+        // Single file: use data as-is
+        combinedData = allParsedData[0];
+        setFilesProcessed(1);
+        setFileName(filesArray[0].name);
+      }
+
+      setData(combinedData);
 
       // Generate summary
-      const summaryData = getSummary(parsedData);
+      const summaryData = getSummary(combinedData);
       setSummary(summaryData);
     } catch (err) {
       setError(err.message);
       setData(null);
       setSummary(null);
+      setFilesProcessed(0);
     } finally {
       setProcessing(false);
     }
@@ -80,6 +130,7 @@ function App() {
     setFileName('');
     setError(null);
     setSummary(null);
+    setFilesProcessed(0);
     setCurrentPage(1);
     setSearchTerm('');
   };
@@ -197,9 +248,16 @@ function App() {
                   </svg>
                   <div>
                     <h2 className="text-xl font-semibold text-white">
-                      Archivo procesado correctamente
+                      {filesProcessed > 1 ? 'Archivos procesados correctamente' : 'Archivo procesado correctamente'}
                     </h2>
-                    <p className="text-sm text-gray-400">{fileName}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-sm text-gray-400">{fileName}</p>
+                      {filesProcessed > 1 && (
+                        <span className="px-2 py-0.5 bg-cyan-600 text-cyan-100 rounded-full text-xs font-medium">
+                          {filesProcessed} archivos
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <button
@@ -228,9 +286,16 @@ function App() {
                 <div className="space-y-6 mb-6">
                   {/* Initial Balance */}
                   <div className="bg-blue-900/30 p-5 rounded-lg border border-blue-700">
-                    <p className="text-sm text-blue-300 font-medium mb-2">
-                      Saldo Inicial
-                    </p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm text-blue-300 font-medium">
+                        Saldo Inicial
+                      </p>
+                      {filesProcessed > 1 && (
+                        <span className="px-2 py-1 bg-blue-700/50 text-blue-200 rounded text-xs font-medium">
+                          Múltiples archivos (asumido: 0)
+                        </span>
+                      )}
+                    </div>
                     <p className="text-3xl font-bold text-blue-100">
                       ${parseFloat(summary.saldoInicial).toLocaleString('es-ES', {minimumFractionDigits: 2})}
                     </p>
@@ -392,8 +457,10 @@ function App() {
                         <td className="px-4 py-3 text-sm text-gray-300 max-w-xs truncate">
                           {transaction.concepto}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-100 font-medium whitespace-nowrap">
-                          ${parseFloat(transaction.importe).toLocaleString('es-ES', {minimumFractionDigits: 2})}
+                        <td className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+                          (transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? 'text-red-300' : 'text-green-300'
+                        }`}>
+                          {(transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? '-' : ''}${parseFloat(transaction.importe).toLocaleString('es-ES', {minimumFractionDigits: 2})}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <span
@@ -403,7 +470,7 @@ function App() {
                                 : 'bg-red-900/50 text-red-300 border border-red-700'
                             }`}
                           >
-                            {transaction.tipo}
+                            {transaction.tipo === 'Cr' ? 'Cr' : 'Db'}
                           </span>
                         </td>
                       </tr>

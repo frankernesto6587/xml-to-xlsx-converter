@@ -25,7 +25,7 @@ export function generateXLSX(data, originalFileName) {
 
     return xlsxFileName;
   } catch (error) {
-    console.error('Error generating XLSX:', error);
+    console.error('Error al generar el archivo XLSX:', error);
     throw new Error(`Error al generar el archivo Excel: ${error.message}`);
   }
 }
@@ -34,20 +34,35 @@ export function generateXLSX(data, originalFileName) {
  * Create transactions worksheet
  */
 function createTransactionsSheet(data) {
-  const excelData = data.transactions.map(transaction => ({
-    'Fecha': transaction.fecha || '',
-    'Ref. Corriente': transaction.referencia_corriente || '',
-    'Ref. Origen': transaction.referencia_origen || '',
-    'Canal': transaction.canal || '',
-    'Ordenante': transaction.ordenante_nombre || '',
-    'CI Ordenante': transaction.ordenante_ci || '',
-    'Cuenta Ordenante': transaction.ordenante_cuenta || '',
-    'Tarjeta': transaction.ordenante_tarjeta || '',
-    'Cuenta Beneficiario': transaction.beneficiario_cuenta || '',
-    'Concepto': transaction.concepto || '',
-    'Importe': transaction.importe || '',
-    'Tipo': transaction.tipo || '',
-  }));
+  // Add header with initial balance
+  const headerData = [
+    { 'Fecha': 'SALDO INICIAL', 'Ref. Corriente': '', 'Ref. Origen': '', 'Canal': '', 'Ordenante': '', 'CI Ordenante': '', 'Cuenta Ordenante': '', 'Tarjeta': '', 'Cuenta Beneficiario': '', 'Concepto': '', 'Importe': parseFloat(data.saldoInicial?.importe || 0), 'Tipo': data.saldoInicial?.tipo || '' },
+    { 'Fecha': '', 'Ref. Corriente': '', 'Ref. Origen': '', 'Canal': '', 'Ordenante': '', 'CI Ordenante': '', 'Cuenta Ordenante': '', 'Tarjeta': '', 'Cuenta Beneficiario': '', 'Concepto': '', 'Importe': '', 'Tipo': '' },
+  ];
+
+  // Process transactions with negative amounts for debits
+  const transactionsData = data.transactions.map(transaction => {
+    const importe = parseFloat(transaction.importe || 0);
+    const importeConSigno = (transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? -importe : importe;
+
+    return {
+      'Fecha': transaction.fecha || '',
+      'Ref. Corriente': transaction.referencia_corriente || '',
+      'Ref. Origen': transaction.referencia_origen || '',
+      'Canal': transaction.canal || '',
+      'Ordenante': transaction.ordenante_nombre || '',
+      'CI Ordenante': transaction.ordenante_ci || '',
+      'Cuenta Ordenante': transaction.ordenante_cuenta || '',
+      'Tarjeta': transaction.ordenante_tarjeta || '',
+      'Cuenta Beneficiario': transaction.beneficiario_cuenta || '',
+      'Concepto': transaction.concepto || '',
+      'Importe': importeConSigno,
+      'Tipo': transaction.tipo || '',
+    };
+  });
+
+  // Combine header and transactions
+  const excelData = [...headerData, ...transactionsData];
 
   const worksheet = XLSX.utils.json_to_sheet(excelData);
 
@@ -119,14 +134,17 @@ export function getSummary(data) {
 
   data.transactions.forEach(transaction => {
     const amount = parseFloat(transaction.importe) || 0;
-    const type = transaction.tipo;
+    const type = (transaction.tipo || '').trim().toLowerCase();
 
-    if (type === 'Cr') {
+    if (type === 'cr') {
       credits++;
       totalCredits += amount;
-    } else if (type === 'Dr') {
+    } else if (type === 'dr' || type === 'db') {
       debits++;
       totalDebits += amount;
+    } else {
+      // Debug: registrar tipos desconocidos
+      console.log('Tipo de transacción desconocido:', transaction.tipo, 'para la transacción:', transaction);
     }
   });
 

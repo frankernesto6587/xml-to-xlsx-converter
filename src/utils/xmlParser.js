@@ -62,7 +62,7 @@ export function parseXML(xmlContent) {
       saldosFinales,
     };
   } catch (error) {
-    console.error('Error parsing XML:', error);
+    console.error('Error al parsear el XML:', error);
     throw new Error(`Error al procesar el archivo XML: ${error.message}`);
   }
 }

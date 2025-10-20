@@ -42,7 +42,7 @@ export async function extractXMLFromZip(file) {
       allFiles: xmlFiles
     };
   } catch (error) {
-    console.error('Error extracting XML from ZIP:', error);
+    console.error('Error al extraer XML del ZIP:', error);
     throw new Error(`Error al extraer el XML del archivo ZIP: ${error.message}`);
   }
 }
