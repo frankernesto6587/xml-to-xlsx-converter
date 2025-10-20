@@ -1,0 +1,97 @@
+<?xml version="1.0" standalone="yes"?>
+<NewDataSet>
+  <xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xs:element name="NewDataSet" msdata:IsDataSet="true" msdata:MainDataTable="Estado_x0020_de_x0020_Cuenta" msdata:UseCurrentLocale="true">
+      <xs:complexType>
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+          <xs:element name="Estado_x0020_de_x0020_Cuenta">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="fecha" type="xs:string" minOccurs="0" />
+                <xs:element name="ref_corrie" type="xs:string" minOccurs="0" />
+                <xs:element name="ref_origin" type="xs:string" minOccurs="0" />
+                <xs:element name="observ" type="xs:string" minOccurs="0" />
+                <xs:element name="importe" type="xs:decimal" minOccurs="0" />
+                <xs:element name="tipo" type="xs:string" minOccurs="0" />
+              </xs:sequence>
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <Estado_x0020_de_x0020_Cuenta>
+    <fecha />
+    <ref_corrie />
+    <ref_origin />
+    <observ>Saldo Contable Anterior:</observ>
+    <importe>2980683.35</importe>
+    <tipo>Cr</tipo>
+  </Estado_x0020_de_x0020_Cuenta>
+  <Estado_x0020_de_x0020_Cuenta>
+    <fecha>11/09/2025</fecha>
+    <ref_corrie>YR50004013598</ref_corrie>
+    <ref_origin>98025A4432777</ref_origin>
+    <observ>[COD_ORIGEN:12]&lt;RCSLBTR_102&gt;&lt;ID_MENSAJE&gt;000625009RNJ&lt;/ID_MENSAJE&gt;&lt;REF_TRASOC&gt;98025A4432777&lt;/REF_TRASOC&gt;&lt;REF_UNICA&gt;98025A4432777&lt;/REF_UNICA&gt;&lt;MON_TRANSA MONEDA="CUP" IMPORTE="10200.00"/&gt;&lt;CLI_ORDENA COD_SUCU="997" NUM_CUENTA="9238129972936761" OTR_DATOS=""/&gt;&lt;CLI_BENEFI COD_SUCU="598" NUM_CUENTA="0659834001469612" OTR_DATOS=""/&gt;&lt;DET_PAGO&gt;TRANSFERENCIA POR BANCAMOVIL-BPA. ORDENADA POR: JOSE MONTEAGUDO CRUZ PAN: 923812XXXXXX6761 ID_CUBACEL: 2502625776 5352701723 BENEFICIARIO: 0659834001469612&lt;/DET_PAGO&gt;&lt;IMP_ORIGIN MONEDA=" " IMPORTE="0.00"/&gt;&lt;DET_GASTO&gt;SHA&lt;/DET_GASTO&gt;&lt;TASA_CAMBIO&gt;0.00000&lt;/TASA_CAMBIO&gt;&lt;/RCSLBTR_102&gt;</observ>
+    <importe>10200.00</importe>
+    <tipo>Cr</tipo>
+  </Estado_x0020_de_x0020_Cuenta>
+  <Estado_x0020_de_x0020_Cuenta>
+    <fecha>11/09/2025</fecha>
+    <ref_corrie>YR50004013598</ref_corrie>
+    <ref_origin>98025A4434671</ref_origin>
+    <observ>[COD_ORIGEN:12]&lt;RCSLBTR_102&gt;&lt;ID_MENSAJE&gt;000625009RV4&lt;/ID_MENSAJE&gt;&lt;REF_TRASOC&gt;98025A4434671&lt;/REF_TRASOC&gt;&lt;REF_UNICA&gt;98025A4434671&lt;/REF_UNICA&gt;&lt;MON_TRANSA MONEDA="CUP" IMPORTE="17760.00"/&gt;&lt;CLI_ORDENA COD_SUCU="997" NUM_CUENTA="9238129975925308" OTR_DATOS=""/&gt;&lt;CLI_BENEFI COD_SUCU="598" NUM_CUENTA="0659834001469612" OTR_DATOS=""/&gt;&lt;DET_PAGO&gt;TRANSFERENCIA POR BANCAMOVIL-BPA. ORDENADA POR: LEODAN MORALES SOCARRAS PAN: 923812XXXXXX5308 ID_CUBACEL: 2505151668 5352681936 BENEFICIARIO: 0659834001469612&lt;/DET_PAGO&gt;&lt;IMP_ORIGIN MONEDA=" " IMPORTE="0.00"/&gt;&lt;DET_GASTO&gt;SHA&lt;/DET_GASTO&gt;&lt;TASA_CAMBIO&gt;0.00000&lt;/TASA_CAMBIO&gt;&lt;/RCSLBTR_102&gt;</observ>
+    <importe>17760.00</importe>
+    <tipo>Cr</tipo>
+  </Estado_x0020_de_x0020_Cuenta>
+  <Estado_x0020_de_x0020_Cuenta>
+    <fecha>11/09/2025</fecha>
+    <ref_corrie>YY50142469598</ref_corrie>
+    <ref_origin>KW501QOBAE999</ref_origin>
+    <observ>CREDITO RECIBIDO POR CORREO ELECTRONICO
+[DEBITO:40311252687581] TRANSFERENCIA EMITIDA POR BANCA MOVIL Tarjeta#: 923406XXXXXX5616ID:0659834001469612IDCUBACEL:2522183432TS:07-TransferenciaFECHA FACTURA: 0925INF_RECIBO:TRANSFERENCIA A TERCEROS MEDIANTE TARJETA MAGNETICA  ORDENANTE NOMBRE:LEANDRO TORRES LORITE| CI:95081440109 | Tarjeta RED:9234069994985616</observ>
+    <importe>4800.00</importe>
+    <tipo>Cr</tipo>
+  </Estado_x0020_de_x0020_Cuenta>
+  <Estado_x0020_de_x0020_Cuenta>
+    <fecha>11/09/2025</fecha>
+    <ref_corrie>YY50142472598</ref_corrie>
+    <ref_origin>KW501QORXQ999</ref_origin>
+    <observ>CREDITO RECIBIDO POR CORREO ELECTRONICO
+[DEBITO:40311150308676] TRANSFERENCIA EMITIDA POR BANCA MOVIL Tarjeta#: 920406XXXXXX5977ID:0659834001469612IDCUBACEL:2522544772TS:07-TransferenciaFECHA FACTURA: 0925INF_RECIBO:TRANSFERENCIA A TERCEROS MEDIANTE TARJETA MAGNETICA  ORDENANTE NOMBRE:YUSNELI MORA ESPINOSA| CI:81082116953 | Tarjeta RED:9204069996045977</observ>
+    <importe>25056.00</importe>
+    <tipo>Cr</tipo>
+  </Estado_x0020_de_x0020_Cuenta>
+  <Estado_x0020_de_x0020_Cuenta>
+    <fecha />
+    <ref_corrie />
+    <ref_origin />
+    <observ>Saldo Contable Final:</observ>
+    <importe>3038499.35</importe>
+    <tipo>Cr</tipo>
+  </Estado_x0020_de_x0020_Cuenta>
+  <Estado_x0020_de_x0020_Cuenta>
+    <fecha />
+    <ref_corrie />
+    <ref_origin />
+    <observ>Saldo Reservado:</observ>
+    <importe>0.00</importe>
+    <tipo>Cr</tipo>
+  </Estado_x0020_de_x0020_Cuenta>
+  <Estado_x0020_de_x0020_Cuenta>
+    <fecha />
+    <ref_corrie />
+    <ref_origin />
+    <observ>Saldo Sobre Giro:</observ>
+    <importe>0.00</importe>
+    <tipo>Cr</tipo>
+  </Estado_x0020_de_x0020_Cuenta>
+  <Estado_x0020_de_x0020_Cuenta>
+    <fecha />
+    <ref_corrie />
+    <ref_origin />
+    <observ>Saldo Disponible Final:</observ>
+    <importe>3038499.35</importe>
+    <tipo>Cr</tipo>
+  </Estado_x0020_de_x0020_Cuenta>
+</NewDataSet>
