@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import FileUpload from './components/FileUpload';
 import { parseXML } from './utils/xmlParser';
-import { generateXLSX, previewData, getSummary } from './utils/xlsxGenerator';
+import { generateXLSX, getSummary } from './utils/xlsxGenerator';
 import { extractXMLFromZip, isZipFile } from './utils/zipHandler';
 
 function App() {
@@ -10,6 +10,11 @@ function App() {
   const [error, setError] = useState(null);
   const [summary, setSummary] = useState(null);
   const [processing, setProcessing] = useState(false);
+
+  // Pagination and filter
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleFileSelect = async (file) => {
     setProcessing(true);
@@ -75,6 +80,58 @@ function App() {
     setFileName('');
     setError(null);
     setSummary(null);
+    setCurrentPage(1);
+    setSearchTerm('');
+  };
+
+  // Filter transactions based on search term
+  const getFilteredTransactions = () => {
+    if (!data || !data.transactions) return [];
+
+    if (!searchTerm.trim()) {
+      return data.transactions;
+    }
+
+    const search = searchTerm.toLowerCase();
+    return data.transactions.filter(transaction => {
+      return (
+        (transaction.fecha || '').toLowerCase().includes(search) ||
+        (transaction.referencia_corriente || '').toLowerCase().includes(search) ||
+        (transaction.referencia_origen || '').toLowerCase().includes(search) ||
+        (transaction.canal || '').toLowerCase().includes(search) ||
+        (transaction.ordenante_nombre || '').toLowerCase().includes(search) ||
+        (transaction.ordenante_ci || '').toLowerCase().includes(search) ||
+        (transaction.ordenante_cuenta || '').toLowerCase().includes(search) ||
+        (transaction.beneficiario_cuenta || '').toLowerCase().includes(search) ||
+        (transaction.concepto || '').toLowerCase().includes(search) ||
+        (transaction.importe || '').toString().includes(search) ||
+        (transaction.tipo || '').toLowerCase().includes(search)
+      );
+    });
+  };
+
+  // Get paginated transactions
+  const getPaginatedTransactions = () => {
+    const filtered = getFilteredTransactions();
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    const filtered = getFilteredTransactions();
+    return Math.ceil(filtered.length / itemsPerPage);
+  };
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    // Scroll to table top
+    document.getElementById('transactions-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to first page when searching
   };
 
   return (
@@ -243,17 +300,53 @@ function App() {
               </button>
             </div>
 
-            {/* Preview Table */}
-            <div className="bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-4">
-                Vista previa de transacciones (primeras 10)
-              </h3>
+            {/* Transactions Table with Search and Pagination */}
+            <div id="transactions-table" className="bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-white">
+                  Todas las transacciones ({getFilteredTransactions().length})
+                </h3>
+              </div>
+
+              {/* Search Bar */}
+              <div className="mb-6">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Buscar por fecha, referencias, ordenante, beneficiario, importe, concepto..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="w-full px-4 py-3 pl-11 bg-gray-900 border border-gray-600 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  />
+                  <svg
+                    className="absolute left-3 top-3.5 w-5 h-5 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Table */}
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-700">
                   <thead className="bg-gray-900">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                         Fecha
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Ref. Corriente
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Ref. Origen
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                         Canal
@@ -276,10 +369,16 @@ function App() {
                     </tr>
                   </thead>
                   <tbody className="bg-gray-800 divide-y divide-gray-700">
-                    {previewData(data.transactions).map((transaction, index) => (
+                    {getPaginatedTransactions().map((transaction, index) => (
                       <tr key={index} className="hover:bg-gray-700 transition-colors">
                         <td className="px-4 py-3 text-sm text-gray-200 whitespace-nowrap">
                           {transaction.fecha}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-cyan-300 font-mono">
+                          {transaction.referencia_corriente}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-cyan-300 font-mono">
+                          {transaction.referencia_origen}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-200">
                           {transaction.canal}
@@ -293,7 +392,7 @@ function App() {
                         <td className="px-4 py-3 text-sm text-gray-300 max-w-xs truncate">
                           {transaction.concepto}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-100 font-medium">
+                        <td className="px-4 py-3 text-sm text-gray-100 font-medium whitespace-nowrap">
                           ${parseFloat(transaction.importe).toLocaleString('es-ES', {minimumFractionDigits: 2})}
                         </td>
                         <td className="px-4 py-3 text-sm">
@@ -312,6 +411,90 @@ function App() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination */}
+              {getTotalPages() > 1 && (
+                <div className="mt-6 flex items-center justify-between border-t border-gray-700 pt-4">
+                  <div className="text-sm text-gray-400">
+                    Página {currentPage} de {getTotalPages()} • Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, getFilteredTransactions().length)} de {getFilteredTransactions().length} transacciones
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Primera página"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Página anterior"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Page Numbers */}
+                    {(() => {
+                      const totalPages = getTotalPages();
+                      const pages = [];
+                      let startPage = Math.max(1, currentPage - 2);
+                      let endPage = Math.min(totalPages, currentPage + 2);
+
+                      if (currentPage <= 3) {
+                        endPage = Math.min(5, totalPages);
+                      }
+                      if (currentPage >= totalPages - 2) {
+                        startPage = Math.max(1, totalPages - 4);
+                      }
+
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(
+                          <button
+                            key={i}
+                            onClick={() => handlePageChange(i)}
+                            className={`px-4 py-2 rounded-lg transition-colors ${
+                              i === currentPage
+                                ? 'bg-cyan-600 text-white'
+                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                          >
+                            {i}
+                          </button>
+                        );
+                      }
+                      return pages;
+                    })()}
+
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === getTotalPages()}
+                      className="px-3 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Página siguiente"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(getTotalPages())}
+                      disabled={currentPage === getTotalPages()}
+                      className="px-3 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Última página"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
