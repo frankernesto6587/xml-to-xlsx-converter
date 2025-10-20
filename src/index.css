@@ -1,1 +1,76 @@
 @import "tailwindcss";
+
+/* Light mode styles */
+.light {
+  background-color: #f3f4f6;
+}
+
+.light .bg-gray-900 {
+  background-color: #ffffff;
+}
+
+.light .bg-gray-800 {
+  background-color: #f9fafb;
+}
+
+.light .bg-gray-700 {
+  background-color: #e5e7eb;
+}
+
+.light .bg-gray-700\/50 {
+  background-color: #f3f4f6;
+}
+
+.light .text-white {
+  color: #111827;
+}
+
+.light .text-gray-200,
+.light .text-gray-300 {
+  color: #374151;
+}
+
+.light .text-gray-400 {
+  color: #6b7280;
+}
+
+.light .border-gray-700 {
+  border-color: #d1d5db;
+}
+
+.light .border-gray-600 {
+  border-color: #e5e7eb;
+}
+
+.light .divide-gray-700 {
+  border-color: #d1d5db;
+}
+
+/* Keep dark mode colors for accents */
+.light .text-cyan-400,
+.light .text-cyan-300 {
+  color: #06b6d4;
+}
+
+.light .text-green-300,
+.light .text-green-200,
+.light .text-green-100 {
+  color: #059669;
+}
+
+.light .text-red-300,
+.light .text-red-200,
+.light .text-red-100 {
+  color: #dc2626;
+}
+
+.light .text-blue-300,
+.light .text-blue-200,
+.light .text-blue-100 {
+  color: #2563eb;
+}
+
+.light .text-yellow-300,
+.light .text-yellow-200 {
+  color: #ca8a04;
+}

@@ -1,8 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
+import ThemeToggle from './components/ThemeToggle';
+import PanelSettings from './components/PanelSettings';
+import DuplicatesAlert from './components/DuplicatesAlert';
+import ExportPanel from './components/ExportPanel';
+import AdvancedFilters from './components/AdvancedFilters';
+import ChartsPanel from './components/ChartsPanel';
+import AdvancedSummary from './components/AdvancedSummary';
+import TransactionModal from './components/TransactionModal';
 import { parseXML } from './utils/xmlParser';
-import { generateXLSX, getSummary } from './utils/xlsxGenerator';
+import { getSummary } from './utils/xlsxGenerator';
 import { extractXMLFromZip, isZipFile } from './utils/zipHandler';
+import { saveToHistory, getPreferences, savePreferences } from './utils/localStorage';
 
 function App() {
   const [data, setData] = useState(null);
@@ -16,6 +25,29 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
+  const [advancedFilters, setAdvancedFilters] = useState(null);
+  const [channels, setChannels] = useState([]);
+
+  // Panel preferences
+  const [panelPreferences, setPanelPreferences] = useState({
+    duplicates: true,
+    export: true,
+    charts: true,
+    advancedSummary: true,
+    filters: true,
+    table: true
+  });
+
+  // Transaction modal
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+
+  // Load panel preferences on mount
+  useEffect(() => {
+    const prefs = getPreferences();
+    if (prefs.panels) {
+      setPanelPreferences(prefs.panels);
+    }
+  }, []);
 
   const handleFileSelect = async (files) => {
     setProcessing(true);
@@ -104,6 +136,13 @@ function App() {
       // Generate summary
       const summaryData = getSummary(combinedData);
       setSummary(summaryData);
+
+      // Extract unique channels
+      const uniqueChannels = [...new Set(combinedData.transactions.map(t => t.canal).filter(Boolean))];
+      setChannels(uniqueChannels);
+
+      // Save to history
+      saveToHistory(combinedData, multipleFiles ? `${filesArray.length} archivos` : filesArray[0].name, summaryData);
     } catch (err) {
       setError(err.message);
       setData(null);
@@ -135,30 +174,89 @@ function App() {
     setSearchTerm('');
   };
 
-  // Filter transactions based on search term
+  // Filter transactions based on search term and advanced filters
   const getFilteredTransactions = () => {
     if (!data || !data.transactions) return [];
 
-    if (!searchTerm.trim()) {
-      return data.transactions;
+    let filtered = [...data.transactions];
+
+    // Apply search term
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(transaction => {
+        return (
+          (transaction.fecha || '').toLowerCase().includes(search) ||
+          (transaction.referencia_corriente || '').toLowerCase().includes(search) ||
+          (transaction.referencia_origen || '').toLowerCase().includes(search) ||
+          (transaction.canal || '').toLowerCase().includes(search) ||
+          (transaction.ordenante_nombre || '').toLowerCase().includes(search) ||
+          (transaction.ordenante_ci || '').toLowerCase().includes(search) ||
+          (transaction.ordenante_cuenta || '').toLowerCase().includes(search) ||
+          (transaction.beneficiario_cuenta || '').toLowerCase().includes(search) ||
+          (transaction.concepto || '').toLowerCase().includes(search) ||
+          (transaction.importe || '').toString().includes(search) ||
+          (transaction.tipo || '').toLowerCase().includes(search)
+        );
+      });
     }
 
-    const search = searchTerm.toLowerCase();
-    return data.transactions.filter(transaction => {
-      return (
-        (transaction.fecha || '').toLowerCase().includes(search) ||
-        (transaction.referencia_corriente || '').toLowerCase().includes(search) ||
-        (transaction.referencia_origen || '').toLowerCase().includes(search) ||
-        (transaction.canal || '').toLowerCase().includes(search) ||
-        (transaction.ordenante_nombre || '').toLowerCase().includes(search) ||
-        (transaction.ordenante_ci || '').toLowerCase().includes(search) ||
-        (transaction.ordenante_cuenta || '').toLowerCase().includes(search) ||
-        (transaction.beneficiario_cuenta || '').toLowerCase().includes(search) ||
-        (transaction.concepto || '').toLowerCase().includes(search) ||
-        (transaction.importe || '').toString().includes(search) ||
-        (transaction.tipo || '').toLowerCase().includes(search)
-      );
-    });
+    // Apply advanced filters
+    if (advancedFilters) {
+      // Date range filter
+      if (advancedFilters.dateFrom || advancedFilters.dateTo) {
+        filtered = filtered.filter(transaction => {
+          if (!transaction.fecha) return false;
+
+          const [day, month, year] = transaction.fecha.split('/');
+          const transactionDate = new Date(year, month - 1, day);
+
+          if (advancedFilters.dateFrom) {
+            const fromDate = new Date(advancedFilters.dateFrom);
+            if (transactionDate < fromDate) return false;
+          }
+
+          if (advancedFilters.dateTo) {
+            const toDate = new Date(advancedFilters.dateTo);
+            if (transactionDate > toDate) return false;
+          }
+
+          return true;
+        });
+      }
+
+      // Type filter
+      if (advancedFilters.type && advancedFilters.type !== 'all') {
+        if (advancedFilters.type === 'credits') {
+          filtered = filtered.filter(t => t.tipo === 'Cr');
+        } else if (advancedFilters.type === 'debits') {
+          filtered = filtered.filter(t => t.tipo === 'Dr' || t.tipo === 'Db');
+        }
+      }
+
+      // Amount range filter
+      if (advancedFilters.amountMin || advancedFilters.amountMax) {
+        filtered = filtered.filter(transaction => {
+          const amount = parseFloat(transaction.importe) || 0;
+
+          if (advancedFilters.amountMin && amount < parseFloat(advancedFilters.amountMin)) {
+            return false;
+          }
+
+          if (advancedFilters.amountMax && amount > parseFloat(advancedFilters.amountMax)) {
+            return false;
+          }
+
+          return true;
+        });
+      }
+
+      // Channel filter
+      if (advancedFilters.channel && advancedFilters.channel !== 'all') {
+        filtered = filtered.filter(t => t.canal === advancedFilters.channel);
+      }
+    }
+
+    return filtered;
   };
 
   // Get paginated transactions
@@ -185,8 +283,44 @@ function App() {
     setCurrentPage(1); // Reset to first page when searching
   };
 
+  const handleFilterChange = (filters) => {
+    setAdvancedFilters(filters);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const handleRemoveDuplicates = (cleanedTransactions) => {
+    const newData = {
+      ...data,
+      transactions: cleanedTransactions
+    };
+    setData(newData);
+
+    // Regenerate summary with cleaned data
+    const summaryData = getSummary(newData);
+    setSummary(summaryData);
+  };
+
+  const handlePanelPreferencesChange = (newPreferences) => {
+    setPanelPreferences(newPreferences);
+
+    // Save to localStorage
+    const prefs = getPreferences();
+    savePreferences({ ...prefs, panels: newPreferences });
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 py-12 px-4">
+      {/* Theme Toggle */}
+      <ThemeToggle />
+
+      {/* Panel Settings - only show when data is loaded */}
+      {data && (
+        <PanelSettings
+          panelPreferences={panelPreferences}
+          onPreferencesChange={handlePanelPreferencesChange}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto">
         {/* Header with MerXbit branding */}
         <div className="text-center mb-12">
@@ -343,29 +477,31 @@ function App() {
                 </div>
               )}
 
-              {/* Download Button */}
-              <button
-                onClick={handleDownload}
-                className="w-full bg-cyan-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-cyan-500 transition-colors flex items-center justify-center shadow-lg"
-              >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  />
-                </svg>
-                Descargar archivo XLSX
-              </button>
             </div>
 
+            {/* Duplicates Alert */}
+            {panelPreferences.duplicates && (
+              <DuplicatesAlert
+                transactions={data.transactions}
+                onRemoveDuplicates={handleRemoveDuplicates}
+              />
+            )}
+
+            {/* Export Panel */}
+            {panelPreferences.export && (
+              <ExportPanel data={data} fileName={fileName} />
+            )}
+
+            {/* Advanced Filters */}
+            {panelPreferences.filters && (
+              <AdvancedFilters
+                onFilterChange={handleFilterChange}
+                channels={channels}
+              />
+            )}
+
             {/* Transactions Table with Search and Pagination */}
+            {panelPreferences.table && (
             <div id="transactions-table" className="bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-white">
@@ -431,11 +567,18 @@ function App() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                         Tipo
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Observaciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-gray-800 divide-y divide-gray-700">
                     {getPaginatedTransactions().map((transaction, index) => (
-                      <tr key={index} className="hover:bg-gray-700 transition-colors">
+                      <tr
+                        key={index}
+                        onClick={() => setSelectedTransaction(transaction)}
+                        className="hover:bg-gray-700 transition-colors cursor-pointer"
+                      >
                         <td className="px-4 py-3 text-sm text-gray-200 whitespace-nowrap">
                           {transaction.fecha}
                         </td>
@@ -472,6 +615,11 @@ function App() {
                           >
                             {transaction.tipo === 'Cr' ? 'Cr' : 'Db'}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-400 font-mono max-w-md">
+                          <div className="truncate" title={transaction.observacion_completa || 'N/A'}>
+                            {transaction.observacion_completa || 'N/A'}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -563,6 +711,17 @@ function App() {
                 </div>
               )}
             </div>
+            )}
+
+            {/* Charts */}
+            {panelPreferences.charts && (
+              <ChartsPanel data={data} summary={summary} />
+            )}
+
+            {/* Advanced Summary */}
+            {panelPreferences.advancedSummary && (
+              <AdvancedSummary data={data} />
+            )}
           </div>
         )}
 
@@ -603,6 +762,14 @@ function App() {
           <p className="mt-1">No se envía información a ningún servidor</p>
         </div>
       </div>
+
+      {/* Transaction Modal */}
+      {selectedTransaction && (
+        <TransactionModal
+          transaction={selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
+        />
+      )}
     </div>
   );
 }

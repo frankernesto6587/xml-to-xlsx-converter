@@ -11,12 +11,15 @@ export async function extractXMLFromZip(file) {
     const zipContent = await zip.loadAsync(file);
 
     // Find all XML files in the ZIP
-    const xmlFiles = Object.keys(zipContent.files).filter(
+    const allFiles = Object.keys(zipContent.files);
+    console.log('Archivos encontrados en ZIP:', allFiles);
+
+    const xmlFiles = allFiles.filter(
       fileName => fileName.toLowerCase().endsWith('.xml') && !zipContent.files[fileName].dir
     );
 
     if (xmlFiles.length === 0) {
-      throw new Error('No se encontró ningún archivo XML dentro del ZIP');
+      throw new Error(`No se encontró ningún archivo XML dentro del ZIP. Archivos disponibles: ${allFiles.join(', ')}`);
     }
 
     // If multiple XML files, prioritize by name patterns

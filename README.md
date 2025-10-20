@@ -21,21 +21,33 @@
 ### 🎯 Características Principales
 
 - **🔄 Conversión Inteligente**: Parsea archivos XML complejos y extrae datos estructurados
-- **📊 Dos Hojas Excel**:
-  - **Transacciones**: Tabla detallada con todas las operaciones
-  - **Resumen**: Saldos inicial, final y estadísticas
+- **📦 Soporte ZIP**: Detecta y extrae automáticamente archivos XML de archivos ZIP
+- **🔀 Múltiples Archivos**: Combina varios XML/ZIP en un solo Excel
+- **📊 Exportación Múltiple**:
+  - **XLSX**: Excel con dos hojas (Transacciones y Resumen)
+  - **CSV**: Formato separado por comas personalizable
+  - **PDF**: Documento formateado con tablas
+  - **JSON**: Datos estructurados para integraciones
 - **🔍 Extracción Automática**: Identifica y separa:
   - Ordenante (nombre, CI, cuenta, tarjeta)
   - Beneficiario (cuenta)
   - Canal de transacción
   - Concepto detallado
-- **📈 Estadísticas en Tiempo Real**:
-  - Saldo inicial y final
-  - Total de transacciones
-  - Créditos y débitos separados
-  - Importes totales
-- **👀 Vista Previa**: Visualiza las primeras 10 transacciones antes de descargar
-- **🎨 Interfaz Moderna**: Diseño dark mode con drag & drop
+- **📈 Análisis Avanzado**:
+  - Gráficos interactivos (pastel, líneas, barras)
+  - Top 10 transacciones mayores
+  - Promedios diarios de gastos/ingresos
+  - Análisis por canal
+  - Evolución del saldo
+- **🔎 Filtros Avanzados**:
+  - Rango de fechas
+  - Tipo (créditos/débitos)
+  - Rango de importes
+  - Canal específico
+- **⚠️ Detección de Duplicados**: Identifica y elimina transacciones duplicadas
+- **💾 Historial Local**: Guarda los últimos 10 procesamiento en localStorage
+- **🎨 Modo Claro/Oscuro**: Cambia entre temas según tu preferencia
+- **📱 Diseño Responsivo**: Funciona en desktop, tablet y móvil
 - **🔒 Seguridad Total**: Sin servidores, sin envío de datos
 
 ---
@@ -65,9 +77,12 @@ La aplicación estará disponible en `http://localhost:5173`
 
 ### Uso
 
-1. **Arrastra o selecciona** tu archivo XML de extracto bancario
-2. **Visualiza** los datos procesados y las estadísticas
-3. **Descarga** el archivo XLSX generado
+1. **Carga archivos**: Arrastra o selecciona uno o varios archivos XML/ZIP
+2. **Revisa datos**: Visualiza estadísticas, gráficos y análisis avanzado
+3. **Aplica filtros**: Usa filtros avanzados para encontrar transacciones específicas
+4. **Detecta duplicados**: Revisa y elimina transacciones duplicadas si las hay
+5. **Exporta**: Descarga en el formato que prefieras (XLSX, CSV, PDF, JSON)
+6. **Cambia tema**: Alterna entre modo claro y oscuro según tu preferencia
 
 ---
 
@@ -80,6 +95,12 @@ La aplicación estará disponible en `http://localhost:5173`
 | **Tailwind CSS** | Estilos y diseño | 4.1 |
 | **xlsx (SheetJS)** | Generación de archivos Excel | 0.18 |
 | **xml-js** | Parsing de XML | 1.6 |
+| **Chart.js** | Gráficos interactivos | 4.5 |
+| **react-chartjs-2** | Integración Chart.js con React | 5.3 |
+| **jsPDF** | Generación de PDFs | 3.0 |
+| **jspdf-autotable** | Tablas en PDFs | 5.0 |
+| **jszip** | Extracción de archivos ZIP | 3.10 |
+| **date-fns** | Manejo de fechas | 4.1 |
 | **pnpm** | Gestor de paquetes | - |
 
 ---
@@ -90,16 +111,27 @@ La aplicación estará disponible en `http://localhost:5173`
 xml-to-xlsx-converter/
 ├── src/
 │   ├── components/
-│   │   └── FileUpload.jsx       # Componente drag & drop
+│   │   ├── FileUpload.jsx           # Componente drag & drop
+│   │   ├── ThemeToggle.jsx          # Toggle modo claro/oscuro
+│   │   ├── DuplicatesAlert.jsx      # Alerta de duplicados
+│   │   ├── ExportPanel.jsx          # Panel de exportación múltiple
+│   │   ├── AdvancedFilters.jsx      # Filtros avanzados
+│   │   ├── ChartsPanel.jsx          # Gráficos interactivos
+│   │   └── AdvancedSummary.jsx      # Resumen con análisis
 │   ├── utils/
-│   │   ├── xmlParser.js         # Parser XML con extracción inteligente
-│   │   └── xlsxGenerator.js     # Generador Excel + estadísticas
-│   ├── App.jsx                  # Componente principal
-│   └── index.css                # Estilos Tailwind
+│   │   ├── xmlParser.js             # Parser XML con extracción inteligente
+│   │   ├── xlsxGenerator.js         # Generador Excel + estadísticas
+│   │   ├── zipHandler.js            # Manejo de archivos ZIP
+│   │   ├── duplicateDetector.js     # Detección de duplicados
+│   │   ├── advancedAnalysis.js      # Análisis avanzado de datos
+│   │   ├── exporters.js             # Exportación CSV, PDF, JSON
+│   │   └── localStorage.js          # Gestión de historial local
+│   ├── App.jsx                      # Componente principal
+│   └── index.css                    # Estilos Tailwind + modo claro
 ├── public/
 │   └── muestra_100_operaciones.xml  # Archivo de ejemplo
-├── tailwind.config.js           # Configuración Tailwind
-├── vite.config.js               # Configuración Vite
+├── postcss.config.js                # Configuración PostCSS
+├── vite.config.js                   # Configuración Vite
 └── package.json
 ```
 

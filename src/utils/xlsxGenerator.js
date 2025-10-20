@@ -17,8 +17,16 @@ export function generateXLSX(data, originalFileName) {
     const summarySheet = createSummarySheet(data);
     XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumen');
 
-    // Generate filename
-    const xlsxFileName = originalFileName.replace(/\.xml$/i, '.xlsx');
+    // Generate filename - handle various cases
+    let xlsxFileName;
+    if (originalFileName.toLowerCase().endsWith('.xml')) {
+      xlsxFileName = originalFileName.replace(/\.xml$/i, '.xlsx');
+    } else if (originalFileName.toLowerCase().endsWith('.zip')) {
+      xlsxFileName = originalFileName.replace(/\.zip$/i, '.xlsx');
+    } else {
+      // For combined files or other cases
+      xlsxFileName = `extracto_${new Date().getTime()}.xlsx`;
+    }
 
     // Write and download the file
     XLSX.writeFile(workbook, xlsxFileName);
