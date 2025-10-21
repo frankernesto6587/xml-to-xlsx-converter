@@ -64,9 +64,17 @@ export function exportToCSV(data, fileName = 'extracto.csv', selectedColumns = n
         value = transaction[col] || '';
       }
 
-      // Escape commas and quotes in values
-      if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-        value = `"${value.replace(/"/g, '""')}"`;
+      // Escape commas, quotes, and newlines in values for CSV
+      if (typeof value === 'string') {
+        const needsEscaping = value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r');
+
+        // Replace newlines with spaces for better CSV compatibility
+        value = value.replace(/\r?\n/g, ' ');
+
+        // Wrap in quotes if needed and escape internal quotes
+        if (needsEscaping) {
+          value = `"${value.replace(/"/g, '""')}"`;
+        }
       }
 
       return value;

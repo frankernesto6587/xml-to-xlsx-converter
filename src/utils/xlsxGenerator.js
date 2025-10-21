@@ -39,6 +39,35 @@ export function generateXLSX(data, originalFileName) {
 }
 
 /**
+ * Convert date string to Excel date object
+ * @param {string} dateStr - Date in M/D/YYYY format
+ * @returns {Date|string} Date object or original string
+ */
+function parseToExcelDate(dateStr) {
+  if (!dateStr || dateStr.trim() === '') {
+    return '';
+  }
+
+  // Parse M/D/YYYY format
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const month = parseInt(parts[0], 10) - 1; // JavaScript months are 0-indexed
+    const day = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+
+    // Create Date object - Excel will recognize this as a date
+    const date = new Date(year, month, day);
+
+    // Verify the date is valid
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+
+  return dateStr; // Return original if parsing fails
+}
+
+/**
  * Create transactions worksheet
  */
 function createTransactionsSheet(data) {
@@ -94,7 +123,7 @@ function createTransactionsSheet(data) {
     }
 
     return {
-      'Fecha': transaction.fecha || '',
+      'Fecha': parseToExcelDate(transaction.fecha),
       'Ref. Corriente': transaction.referencia_corriente || '',
       'Ref. Origen': transaction.referencia_origen || '',
       'Canal': transaction.canal || '',
