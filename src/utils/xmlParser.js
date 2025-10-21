@@ -70,7 +70,7 @@ export function parseXML(xmlContent) {
 /**
  * Convert date from DD/MM/YYYY to MM/DD/YYYY format for Excel
  * @param {string} dateStr - Date in DD/MM/YYYY format
- * @returns {string} Date in MM/DD/YYYY format
+ * @returns {string} Date in MM/DD/YYYY format without leading zeros
  */
 function convertDateFormat(dateStr) {
   if (!dateStr || dateStr.trim() === '') {
@@ -81,8 +81,10 @@ function convertDateFormat(dateStr) {
   const parts = dateStr.split('/');
   if (parts.length === 3) {
     const [day, month, year] = parts;
-    // Return in MM/DD/YYYY format
-    return `${month}/${day}/${year}`;
+    // Remove leading zeros and return in MM/DD/YYYY format
+    const monthNum = parseInt(month, 10);
+    const dayNum = parseInt(day, 10);
+    return `${monthNum}/${dayNum}/${year}`;
   }
 
   return dateStr; // Return original if not in expected format
