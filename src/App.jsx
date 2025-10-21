@@ -20,6 +20,7 @@ function App() {
   const [summary, setSummary] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [filesProcessed, setFilesProcessed] = useState(0);
+  const [sequenceValidation, setSequenceValidation] = useState(null);
 
   // Pagination and filter
   const [currentPage, setCurrentPage] = useState(1);
@@ -97,30 +98,109 @@ function App() {
       let combinedData;
 
       if (multipleFiles) {
-        // When multiple files: assume saldoInicial = 0
-        const allTransactions = [];
-        const firstFile = allParsedData[0];
+        // Helper function to parse dates from M/D/YYYY format
+        const parseDate = (dateStr) => {
+          if (!dateStr) return new Date(0);
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+            const month = parseInt(parts[0], 10) - 1;
+            const day = parseInt(parts[1], 10);
+            const year = parseInt(parts[2], 10);
+            return new Date(year, month, day);
+          }
+          return new Date(0);
+        };
 
         // Collect all transactions from all files
+        const allTransactions = [];
         allParsedData.forEach(parsedData => {
           allTransactions.push(...parsedData.transactions);
         });
 
-        // Sort by date (parse date in DD/MM/YYYY format)
+        // Sort by date
         allTransactions.sort((a, b) => {
-          const parseDate = (dateStr) => {
-            if (!dateStr) return new Date(0);
-            const [day, month, year] = dateStr.split('/');
-            return new Date(year, month - 1, day);
-          };
           return parseDate(a.fecha) - parseDate(b.fecha);
         });
 
+        // Find file with earliest transaction date (for saldoInicial)
+        let earliestFile = allParsedData[0];
+        let earliestDate = new Date(9999, 11, 31);
+
+        allParsedData.forEach(parsedData => {
+          if (parsedData.transactions.length > 0) {
+            const firstTransactionDate = parseDate(parsedData.transactions[0].fecha);
+            if (firstTransactionDate < earliestDate) {
+              earliestDate = firstTransactionDate;
+              earliestFile = parsedData;
+            }
+          }
+        });
+
+        // Find file with latest transaction date (for saldosFinales)
+        let latestFile = allParsedData[0];
+        let latestDate = new Date(0);
+
+        allParsedData.forEach(parsedData => {
+          if (parsedData.transactions.length > 0) {
+            const lastTransaction = parsedData.transactions[parsedData.transactions.length - 1];
+            const lastTransactionDate = parseDate(lastTransaction.fecha);
+            if (lastTransactionDate > latestDate) {
+              latestDate = lastTransactionDate;
+              latestFile = parsedData;
+            }
+          }
+        });
+
         combinedData = {
-          saldoInicial: { importe: '0.00', tipo: '' },
+          saldoInicial: earliestFile.saldoInicial,
           transactions: allTransactions,
-          saldosFinales: firstFile.saldosFinales // Use finals from first file
+          saldosFinales: latestFile.saldosFinales
         };
+
+        // Validate balance concordance
+        const saldoInicialNum = parseFloat(earliestFile.saldoInicial?.importe || 0);
+        const saldoFinalNum = parseFloat(latestFile.saldosFinales.disponible?.importe || 0);
+
+        let totalCredits = 0;
+        let totalDebits = 0;
+        allTransactions.forEach(t => {
+          const amount = parseFloat(t.importe || 0);
+          if (t.tipo === 'Cr' || t.tipo === 'Hb') {
+            totalCredits += amount;
+          } else if (t.tipo === 'Dr' || t.tipo === 'Db') {
+            totalDebits += amount;
+          }
+        });
+
+        const calculatedBalance = saldoInicialNum + totalCredits - totalDebits;
+        const difference = Math.abs(calculatedBalance - saldoFinalNum);
+
+        // Set sequence validation info
+        const validationInfo = {
+          isValid: difference <= 0.01,
+          saldoInicial: saldoInicialNum,
+          totalCredits,
+          totalDebits,
+          calculatedBalance,
+          saldoFinal: saldoFinalNum,
+          difference,
+          earliestDate: earliestDate.toLocaleDateString('es-ES'),
+          latestDate: latestDate.toLocaleDateString('es-ES')
+        };
+
+        setSequenceValidation(validationInfo);
+
+        if (difference > 0.01) {
+          console.warn(`⚠️ Discrepancia de balance detectada:`);
+          console.warn(`   Saldo Inicial: $${saldoInicialNum.toFixed(2)}`);
+          console.warn(`   Total Créditos: $${totalCredits.toFixed(2)}`);
+          console.warn(`   Total Débitos: $${totalDebits.toFixed(2)}`);
+          console.warn(`   Balance Calculado: $${calculatedBalance.toFixed(2)}`);
+          console.warn(`   Saldo Final Reportado: $${saldoFinalNum.toFixed(2)}`);
+          console.warn(`   Diferencia: $${difference.toFixed(2)}`);
+
+          setError(`⚠️ Advertencia: Se detectó una discrepancia de $${difference.toFixed(2)} entre el balance calculado y el saldo final reportado. Revisa los datos en la consola.`);
+        }
 
         setFilesProcessed(filesArray.length);
         setFileName(`${filesArray.length} archivos combinados`);
@@ -170,6 +250,7 @@ function App() {
     setError(null);
     setSummary(null);
     setFilesProcessed(0);
+    setSequenceValidation(null);
     setCurrentPage(1);
     setSearchTerm('');
   };
@@ -496,6 +577,49 @@ function App() {
               )}
 
             </div>
+
+            {/* Sequence Validation for Multiple Files */}
+            {sequenceValidation && filesProcessed > 1 && (
+              <div className={`p-6 rounded-lg shadow-xl border ${
+                sequenceValidation.isValid
+                  ? 'bg-green-900/30 border-green-700'
+                  : 'bg-yellow-900/30 border-yellow-700'
+              }`}>
+                <div className="flex items-start">
+                  {sequenceValidation.isValid ? (
+                    <svg className="w-6 h-6 text-green-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="w-6 h-6 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  <div className="flex-1">
+                    <h3 className={`font-semibold mb-2 ${
+                      sequenceValidation.isValid ? 'text-green-300' : 'text-yellow-300'
+                    }`}>
+                      {sequenceValidation.isValid
+                        ? '✓ Validación de Secuencia: Correcta'
+                        : '⚠ Validación de Secuencia: Discrepancia Detectada'}
+                    </h3>
+                    <div className="text-sm space-y-1 text-gray-300">
+                      <p>📅 Rango de fechas: {sequenceValidation.earliestDate} → {sequenceValidation.latestDate}</p>
+                      <p>💰 Saldo Inicial: ${sequenceValidation.saldoInicial.toLocaleString('es-ES', {minimumFractionDigits: 2})}</p>
+                      <p>📈 Total Créditos: ${sequenceValidation.totalCredits.toLocaleString('es-ES', {minimumFractionDigits: 2})}</p>
+                      <p>📉 Total Débitos: ${sequenceValidation.totalDebits.toLocaleString('es-ES', {minimumFractionDigits: 2})}</p>
+                      <p className="font-medium">🧮 Balance Calculado: ${sequenceValidation.calculatedBalance.toLocaleString('es-ES', {minimumFractionDigits: 2})}</p>
+                      <p className="font-medium">📊 Saldo Final Reportado: ${sequenceValidation.saldoFinal.toLocaleString('es-ES', {minimumFractionDigits: 2})}</p>
+                      {!sequenceValidation.isValid && (
+                        <p className="font-bold text-yellow-200 mt-2">
+                          ⚠️ Diferencia: ${sequenceValidation.difference.toLocaleString('es-ES', {minimumFractionDigits: 2})}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Duplicates Alert */}
             {panelPreferences.duplicates && (

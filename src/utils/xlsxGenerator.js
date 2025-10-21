@@ -28,8 +28,13 @@ export function generateXLSX(data, originalFileName) {
       xlsxFileName = `extracto_${new Date().getTime()}.xlsx`;
     }
 
-    // Write and download the file
-    XLSX.writeFile(workbook, xlsxFileName);
+    // Write and download the file with options to enable tables
+    XLSX.writeFile(workbook, xlsxFileName, {
+      bookType: 'xlsx',
+      bookSST: false,
+      type: 'binary',
+      cellStyles: true
+    });
 
     return xlsxFileName;
   } catch (error) {
@@ -74,10 +79,11 @@ function createTransactionsSheet(data) {
   const saldoInicialImporte = parseFloat(data.saldoInicial?.importe || 0);
   const saldoInicialTipo = data.saldoInicial?.tipo || '';
 
-  // Add header with initial balance
+  // Add header with initial balance - use empty date for balance row
   const headerData = [
     {
-      'Fecha': 'SALDO INICIAL',
+      'Fecha': '',
+      'Tipo Registro': 'SALDO INICIAL',
       'Ref. Corriente': '',
       'Ref. Origen': '',
       'Canal': '',
@@ -87,13 +93,14 @@ function createTransactionsSheet(data) {
       'Tarjeta': '',
       'Cuenta Beneficiario': '',
       'Concepto': '',
-      'Débito': (saldoInicialTipo === 'Dr' || saldoInicialTipo === 'Db') ? saldoInicialImporte : '',
-      'Crédito': (saldoInicialTipo === 'Cr' || saldoInicialTipo === 'Hb') ? saldoInicialImporte : '',
+      'Débito': (saldoInicialTipo === 'Dr' || saldoInicialTipo === 'Db') ? saldoInicialImporte : 0,
+      'Crédito': (saldoInicialTipo === 'Cr' || saldoInicialTipo === 'Hb') ? saldoInicialImporte : 0,
       'Balance': saldoInicialImporte,
       'Observaciones': ''
     },
     {
       'Fecha': '',
+      'Tipo Registro': '',
       'Ref. Corriente': '',
       'Ref. Origen': '',
       'Canal': '',
@@ -103,27 +110,20 @@ function createTransactionsSheet(data) {
       'Tarjeta': '',
       'Cuenta Beneficiario': '',
       'Concepto': '',
-      'Débito': '',
-      'Crédito': '',
+      'Débito': 0,
+      'Crédito': 0,
       'Balance': '',
       'Observaciones': ''
     },
   ];
 
-  // Process transactions with balance calculation
-  let balance = saldoInicialImporte;
+  // Process transactions WITHOUT pre-calculating balance (will use formulas)
   const transactionsData = data.transactions.map(transaction => {
     const importe = parseFloat(transaction.importe || 0);
 
-    // Calculate balance
-    if (transaction.tipo === 'Cr' || transaction.tipo === 'Hb') {
-      balance += importe;
-    } else if (transaction.tipo === 'Dr' || transaction.tipo === 'Db') {
-      balance -= importe;
-    }
-
     return {
       'Fecha': parseToExcelDate(transaction.fecha),
+      'Tipo Registro': 'TRANSACCIÓN',
       'Ref. Corriente': transaction.referencia_corriente || '',
       'Ref. Origen': transaction.referencia_origen || '',
       'Canal': transaction.canal || '',
@@ -133,9 +133,9 @@ function createTransactionsSheet(data) {
       'Tarjeta': transaction.ordenante_tarjeta || '',
       'Cuenta Beneficiario': transaction.beneficiario_cuenta || '',
       'Concepto': transaction.concepto || '',
-      'Débito': (transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? importe : '',
-      'Crédito': (transaction.tipo === 'Cr' || transaction.tipo === 'Hb') ? importe : '',
-      'Balance': balance,
+      'Débito': (transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? importe : 0,
+      'Crédito': (transaction.tipo === 'Cr' || transaction.tipo === 'Hb') ? importe : 0,
+      'Balance': '',  // Will be replaced with formulas
       'Observaciones': transaction.observacion_completa || '',
     };
   });
@@ -145,9 +145,38 @@ function createTransactionsSheet(data) {
 
   const worksheet = XLSX.utils.json_to_sheet(excelData);
 
+  // Add balance formulas (column N is Balance, column L is Débito, column M is Crédito)
+  // Row 2 (index 1): Initial balance - keep as value
+  // Row 3 (index 2): Empty row - no formula
+  // Row 4 (index 3): First transaction - Formula =N2+M4-L4 (initial balance + credit - debit)
+  // Row 5+ (index 4+): Formula =N4+M5-L5 (previous balance + credit - debit)
+  for (let i = 3; i < excelData.length; i++) {
+    const rowNum = i + 1; // Excel row number (1-indexed)
+
+    // For first transaction, reference row 2 (initial balance)
+    // For subsequent transactions, reference previous row
+    const prevRowNum = i === 3 ? 2 : rowNum - 1;
+
+    // Balance formula: =Previous_Balance + Credit - Debit
+    worksheet[`N${rowNum}`] = {
+      f: `N${prevRowNum}+M${rowNum}-L${rowNum}`,
+      t: 'n'
+    };
+  }
+
+  // Apply date format to Fecha column (column A)
+  const range = XLSX.utils.decode_range(worksheet['!ref']);
+  for (let row = range.s.r + 1; row <= range.e.r; row++) {
+    const cellAddress = `A${row + 1}`;
+    if (worksheet[cellAddress] && worksheet[cellAddress].t === 'd') {
+      worksheet[cellAddress].z = 'm/d/yyyy';
+    }
+  }
+
   // Set column widths
   worksheet['!cols'] = [
     { wch: 12 },  // Fecha
+    { wch: 18 },  // Tipo Registro
     { wch: 18 },  // Ref. Corriente
     { wch: 18 },  // Ref. Origen
     { wch: 20 },  // Canal
@@ -162,6 +191,45 @@ function createTransactionsSheet(data) {
     { wch: 15 },  // Balance
     { wch: 80 },  // Observaciones
   ];
+
+  // Add Excel Table with formatting
+  const totalRows = excelData.length;
+
+  // Add autofilter
+  worksheet['!autofilter'] = { ref: `A1:O${totalRows}` };
+
+  // Add table definition
+  worksheet['!tables'] = [{
+    name: 'TablaTransacciones',
+    displayName: 'TablaTransacciones',
+    ref: `A1:O${totalRows}`,
+    headerRow: true,
+    totalsRow: false,
+    style: {
+      theme: 'TableStyleMedium2',
+      showFirstColumn: false,
+      showLastColumn: false,
+      showRowStripes: true,
+      showColumnStripes: false
+    },
+    columns: [
+      { name: 'Fecha' },
+      { name: 'Tipo Registro', totalsRowLabel: 'Total:' },
+      { name: 'Ref. Corriente' },
+      { name: 'Ref. Origen' },
+      { name: 'Canal' },
+      { name: 'Ordenante' },
+      { name: 'CI Ordenante' },
+      { name: 'Cuenta Ordenante' },
+      { name: 'Tarjeta' },
+      { name: 'Cuenta Beneficiario' },
+      { name: 'Concepto' },
+      { name: 'Débito', totalsRowFunction: 'sum' },
+      { name: 'Crédito', totalsRowFunction: 'sum' },
+      { name: 'Balance' },
+      { name: 'Observaciones' }
+    ]
+  }];
 
   return worksheet;
 }
@@ -188,6 +256,33 @@ function createSummarySheet(data) {
     { wch: 20 },
     { wch: 10 },
   ];
+
+  // Add Excel Table with formatting
+  const totalRows = summaryData.length;
+
+  // Add autofilter
+  worksheet['!autofilter'] = { ref: `A1:C${totalRows}` };
+
+  // Add table definition
+  worksheet['!tables'] = [{
+    name: 'TablaResumen',
+    displayName: 'TablaResumen',
+    ref: `A1:C${totalRows}`,
+    headerRow: true,
+    totalsRow: false,
+    style: {
+      theme: 'TableStyleMedium2',
+      showFirstColumn: false,
+      showLastColumn: false,
+      showRowStripes: true,
+      showColumnStripes: false
+    },
+    columns: [
+      { name: 'Concepto' },
+      { name: 'Importe' },
+      { name: 'Tipo' }
+    ]
+  }];
 
   return worksheet;
 }
