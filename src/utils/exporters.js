@@ -11,7 +11,7 @@ export function exportToCSV(data, fileName = 'extracto.csv', selectedColumns = n
   const columns = selectedColumns || [
     'fecha', 'referencia_corriente', 'referencia_origen', 'canal',
     'ordenante_nombre', 'ordenante_ci', 'ordenante_cuenta', 'ordenante_tarjeta',
-    'beneficiario_cuenta', 'concepto', 'importe', 'tipo'
+    'beneficiario_cuenta', 'concepto', 'debito', 'credito', 'balance', 'observacion_completa'
   ];
 
   const columnHeaders = {
@@ -25,24 +25,43 @@ export function exportToCSV(data, fileName = 'extracto.csv', selectedColumns = n
     ordenante_tarjeta: 'Tarjeta',
     beneficiario_cuenta: 'Cuenta Beneficiario',
     concepto: 'Concepto',
-    importe: 'Importe',
-    tipo: 'Tipo'
+    debito: 'Débito',
+    credito: 'Crédito',
+    balance: 'Balance',
+    observacion_completa: 'Observaciones'
   };
 
   // Create header row
   const headers = columns.map(col => columnHeaders[col] || col);
   const csvRows = [headers.join(',')];
 
+  // Calculate balance
+  const saldoInicial = parseFloat(data.saldoInicial?.importe || 0);
+  let balance = saldoInicial;
+
   // Add data rows
   data.transactions.forEach(transaction => {
+    const importe = parseFloat(transaction.importe || 0);
+
+    // Calculate balance
+    if (transaction.tipo === 'Cr' || transaction.tipo === 'Hb') {
+      balance += importe;
+    } else if (transaction.tipo === 'Dr' || transaction.tipo === 'Db') {
+      balance -= importe;
+    }
+
     const row = columns.map(col => {
-      let value = transaction[col] || '';
+      let value = '';
 
       // Handle special cases
-      if (col === 'importe') {
-        const amount = parseFloat(value) || 0;
-        const sign = (transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? '-' : '';
-        value = sign + amount.toFixed(2);
+      if (col === 'debito') {
+        value = (transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? importe.toFixed(2) : '';
+      } else if (col === 'credito') {
+        value = (transaction.tipo === 'Cr' || transaction.tipo === 'Hb') ? importe.toFixed(2) : '';
+      } else if (col === 'balance') {
+        value = balance.toFixed(2);
+      } else {
+        value = transaction[col] || '';
       }
 
       // Escape commas and quotes in values
@@ -75,7 +94,34 @@ export function exportToCSV(data, fileName = 'extracto.csv', selectedColumns = n
  * @param {string} fileName - Name for the file
  */
 export function exportToJSON(data, fileName = 'extracto.json') {
-  const jsonData = JSON.stringify(data, null, 2);
+  // Calculate balance and add computed fields
+  const saldoInicial = parseFloat(data.saldoInicial?.importe || 0);
+  let balance = saldoInicial;
+
+  const enrichedTransactions = data.transactions.map(transaction => {
+    const importe = parseFloat(transaction.importe || 0);
+
+    // Calculate balance
+    if (transaction.tipo === 'Cr' || transaction.tipo === 'Hb') {
+      balance += importe;
+    } else if (transaction.tipo === 'Dr' || transaction.tipo === 'Db') {
+      balance -= importe;
+    }
+
+    return {
+      ...transaction,
+      debito: (transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? importe : 0,
+      credito: (transaction.tipo === 'Cr' || transaction.tipo === 'Hb') ? importe : 0,
+      balance: balance
+    };
+  });
+
+  const enrichedData = {
+    ...data,
+    transactions: enrichedTransactions
+  };
+
+  const jsonData = JSON.stringify(enrichedData, null, 2);
   const blob = new Blob([jsonData], { type: 'application/json' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);

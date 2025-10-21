@@ -42,16 +42,56 @@ export function generateXLSX(data, originalFileName) {
  * Create transactions worksheet
  */
 function createTransactionsSheet(data) {
+  const saldoInicialImporte = parseFloat(data.saldoInicial?.importe || 0);
+  const saldoInicialTipo = data.saldoInicial?.tipo || '';
+
   // Add header with initial balance
   const headerData = [
-    { 'Fecha': 'SALDO INICIAL', 'Ref. Corriente': '', 'Ref. Origen': '', 'Canal': '', 'Ordenante': '', 'CI Ordenante': '', 'Cuenta Ordenante': '', 'Tarjeta': '', 'Cuenta Beneficiario': '', 'Concepto': '', 'Importe': parseFloat(data.saldoInicial?.importe || 0), 'Tipo': data.saldoInicial?.tipo || '' },
-    { 'Fecha': '', 'Ref. Corriente': '', 'Ref. Origen': '', 'Canal': '', 'Ordenante': '', 'CI Ordenante': '', 'Cuenta Ordenante': '', 'Tarjeta': '', 'Cuenta Beneficiario': '', 'Concepto': '', 'Importe': '', 'Tipo': '' },
+    {
+      'Fecha': 'SALDO INICIAL',
+      'Ref. Corriente': '',
+      'Ref. Origen': '',
+      'Canal': '',
+      'Ordenante': '',
+      'CI Ordenante': '',
+      'Cuenta Ordenante': '',
+      'Tarjeta': '',
+      'Cuenta Beneficiario': '',
+      'Concepto': '',
+      'Débito': (saldoInicialTipo === 'Dr' || saldoInicialTipo === 'Db') ? saldoInicialImporte : '',
+      'Crédito': (saldoInicialTipo === 'Cr' || saldoInicialTipo === 'Hb') ? saldoInicialImporte : '',
+      'Balance': saldoInicialImporte,
+      'Observaciones': ''
+    },
+    {
+      'Fecha': '',
+      'Ref. Corriente': '',
+      'Ref. Origen': '',
+      'Canal': '',
+      'Ordenante': '',
+      'CI Ordenante': '',
+      'Cuenta Ordenante': '',
+      'Tarjeta': '',
+      'Cuenta Beneficiario': '',
+      'Concepto': '',
+      'Débito': '',
+      'Crédito': '',
+      'Balance': '',
+      'Observaciones': ''
+    },
   ];
 
-  // Process transactions with negative amounts for debits
+  // Process transactions with balance calculation
+  let balance = saldoInicialImporte;
   const transactionsData = data.transactions.map(transaction => {
     const importe = parseFloat(transaction.importe || 0);
-    const importeConSigno = (transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? -importe : importe;
+
+    // Calculate balance
+    if (transaction.tipo === 'Cr' || transaction.tipo === 'Hb') {
+      balance += importe;
+    } else if (transaction.tipo === 'Dr' || transaction.tipo === 'Db') {
+      balance -= importe;
+    }
 
     return {
       'Fecha': transaction.fecha || '',
@@ -64,8 +104,10 @@ function createTransactionsSheet(data) {
       'Tarjeta': transaction.ordenante_tarjeta || '',
       'Cuenta Beneficiario': transaction.beneficiario_cuenta || '',
       'Concepto': transaction.concepto || '',
-      'Importe': importeConSigno,
-      'Tipo': transaction.tipo || '',
+      'Débito': (transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? importe : '',
+      'Crédito': (transaction.tipo === 'Cr' || transaction.tipo === 'Hb') ? importe : '',
+      'Balance': balance,
+      'Observaciones': transaction.observacion_completa || '',
     };
   });
 
@@ -86,8 +128,10 @@ function createTransactionsSheet(data) {
     { wch: 20 },  // Tarjeta
     { wch: 20 },  // Cuenta Beneficiario
     { wch: 50 },  // Concepto
-    { wch: 15 },  // Importe
-    { wch: 8 },   // Tipo
+    { wch: 15 },  // Débito
+    { wch: 15 },  // Crédito
+    { wch: 15 },  // Balance
+    { wch: 80 },  // Observaciones
   ];
 
   return worksheet;

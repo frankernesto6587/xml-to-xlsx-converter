@@ -259,12 +259,30 @@ function App() {
     return filtered;
   };
 
+  // Calculate balance for transactions
+  const calculateBalance = (transactions) => {
+    let balance = 0;
+    return transactions.map(transaction => {
+      const importe = parseFloat(transaction.importe || 0);
+      if (transaction.tipo === 'Cr' || transaction.tipo === 'Hb') {
+        balance += importe;
+      } else if (transaction.tipo === 'Dr' || transaction.tipo === 'Db') {
+        balance -= importe;
+      }
+      return {
+        ...transaction,
+        balance: balance
+      };
+    });
+  };
+
   // Get paginated transactions
   const getPaginatedTransactions = () => {
     const filtered = getFilteredTransactions();
+    const withBalance = calculateBalance(filtered);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return filtered.slice(startIndex, endIndex);
+    return withBalance.slice(startIndex, endIndex);
   };
 
   const getTotalPages = () => {
@@ -561,11 +579,14 @@ function App() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                         Concepto
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                        Importe
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Débito
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                        Tipo
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Crédito
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Balance
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                         Observaciones
@@ -600,21 +621,18 @@ function App() {
                         <td className="px-4 py-3 text-sm text-gray-300 max-w-xs truncate">
                           {transaction.concepto}
                         </td>
-                        <td className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
-                          (transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? 'text-red-300' : 'text-green-300'
-                        }`}>
-                          {(transaction.tipo === 'Dr' || transaction.tipo === 'Db') ? '-' : ''}${parseFloat(transaction.importe).toLocaleString('es-ES', {minimumFractionDigits: 2})}
+                        <td className="px-4 py-3 text-sm font-medium text-right whitespace-nowrap text-red-300">
+                          {(transaction.tipo === 'Dr' || transaction.tipo === 'Db')
+                            ? `$${parseFloat(transaction.importe).toLocaleString('es-ES', {minimumFractionDigits: 2})}`
+                            : ''}
                         </td>
-                        <td className="px-4 py-3 text-sm">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              transaction.tipo === 'Cr'
-                                ? 'bg-green-900/50 text-green-300 border border-green-700'
-                                : 'bg-red-900/50 text-red-300 border border-red-700'
-                            }`}
-                          >
-                            {transaction.tipo === 'Cr' ? 'Cr' : 'Db'}
-                          </span>
+                        <td className="px-4 py-3 text-sm font-medium text-right whitespace-nowrap text-green-300">
+                          {(transaction.tipo === 'Cr' || transaction.tipo === 'Hb')
+                            ? `$${parseFloat(transaction.importe).toLocaleString('es-ES', {minimumFractionDigits: 2})}`
+                            : ''}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-right whitespace-nowrap text-cyan-300">
+                          ${transaction.balance.toLocaleString('es-ES', {minimumFractionDigits: 2})}
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-400 font-mono max-w-md">
                           <div className="truncate" title={transaction.observacion_completa || 'N/A'}>
