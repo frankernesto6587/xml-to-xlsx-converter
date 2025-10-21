@@ -68,6 +68,27 @@ export function parseXML(xmlContent) {
 }
 
 /**
+ * Convert date from DD/MM/YYYY to MM/DD/YYYY format for Excel
+ * @param {string} dateStr - Date in DD/MM/YYYY format
+ * @returns {string} Date in MM/DD/YYYY format
+ */
+function convertDateFormat(dateStr) {
+  if (!dateStr || dateStr.trim() === '') {
+    return '';
+  }
+
+  // Check if date is in DD/MM/YYYY format
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    // Return in MM/DD/YYYY format
+    return `${month}/${day}/${year}`;
+  }
+
+  return dateStr; // Return original if not in expected format
+}
+
+/**
  * Parse transaction details from a record
  */
 function parseTransactionDetails(record) {
@@ -78,7 +99,7 @@ function parseTransactionDetails(record) {
   const extractedData = extractObservationData(decodedObserv);
 
   return {
-    fecha: getElementText(record.fecha),
+    fecha: convertDateFormat(getElementText(record.fecha)),
     referencia_corriente: getElementText(record.ref_corrie),
     referencia_origen: getElementText(record.ref_origin),
     importe: getElementText(record.importe),
