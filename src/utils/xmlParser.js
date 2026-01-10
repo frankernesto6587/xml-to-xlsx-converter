@@ -49,6 +49,10 @@ export function parseXML(xmlContent) {
         saldosFinales.sobreGiro = { importe, tipo };
       } else if (observ.includes('Saldo Disponible Final')) {
         saldosFinales.disponible = { importe, tipo };
+      } else if (observ.includes('Saldo Contable al Cierre del D')) {
+        // Ignorar saldos intermedios diarios de MLC - no son transacciones
+      } else if (observ.includes('Saldo Confirmado Final')) {
+        // Ignorar - redundante con Saldo Contable Final
       } else {
         // Regular transaction - parse details
         const parsedTransaction = parseTransactionDetails(record);
@@ -198,4 +202,23 @@ export function decodeHTMLEntities(text) {
   const textarea = document.createElement('textarea');
   textarea.innerHTML = text;
   return textarea.value;
+}
+
+/**
+ * Detecta el tipo de moneda basado en el nombre del archivo
+ * @param {string} fileName - Nombre del archivo
+ * @returns {Object} { tipo: 'MLC'|'MN'|null, moneda: 'USD'|'CUP'|null }
+ */
+export function detectCurrencyType(fileName) {
+  if (!fileName) return { tipo: null, moneda: null };
+
+  const prefix = fileName.substring(0, 4);
+
+  if (prefix === '0699') {
+    return { tipo: 'MLC', moneda: 'USD' };
+  } else if (prefix === '0659') {
+    return { tipo: 'MN', moneda: 'CUP' };
+  }
+
+  return { tipo: null, moneda: null };
 }

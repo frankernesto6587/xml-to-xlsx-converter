@@ -8,7 +8,7 @@ import AdvancedFilters from './components/AdvancedFilters';
 import ChartsPanel from './components/ChartsPanel';
 import AdvancedSummary from './components/AdvancedSummary';
 import TransactionModal from './components/TransactionModal';
-import { parseXML } from './utils/xmlParser';
+import { parseXML, detectCurrencyType } from './utils/xmlParser';
 import { getSummary } from './utils/xlsxGenerator';
 import { extractXMLFromZip, isZipFile } from './utils/zipHandler';
 import { saveToHistory, getPreferences, savePreferences } from './utils/localStorage';
@@ -21,6 +21,7 @@ function App() {
   const [processing, setProcessing] = useState(false);
   const [filesProcessed, setFilesProcessed] = useState(0);
   const [sequenceValidation, setSequenceValidation] = useState(null);
+  const [currencyType, setCurrencyType] = useState(null); // { tipo: 'MLC'|'MN', moneda: 'USD'|'CUP' }
 
   // Pagination and filter
   const [currentPage, setCurrentPage] = useState(1);
@@ -58,6 +59,22 @@ function App() {
       // Convert to array if single file
       const filesArray = Array.isArray(files) ? files : [files];
       const multipleFiles = filesArray.length > 1;
+
+      // Detect and validate currency type
+      const detectedTypes = filesArray.map(f => detectCurrencyType(f.name));
+      const uniqueTypes = [...new Set(detectedTypes.map(t => t.tipo).filter(Boolean))];
+
+      if (uniqueTypes.length > 1) {
+        setError('No se pueden procesar archivos MLC (USD) y MN (CUP) juntos. Por favor, suba solo archivos de un tipo de moneda.');
+        setProcessing(false);
+        return;
+      }
+
+      if (uniqueTypes.length === 1) {
+        setCurrencyType(detectedTypes.find(t => t.tipo));
+      } else {
+        setCurrencyType(null);
+      }
 
       // Process each file
       const allParsedData = [];
@@ -159,7 +176,11 @@ function App() {
 
         // Validate balance concordance
         const saldoInicialNum = parseFloat(earliestFile.saldoInicial?.importe || 0);
-        const saldoFinalNum = parseFloat(latestFile.saldosFinales.disponible?.importe || 0);
+        const saldoFinalNum = parseFloat(
+          latestFile.saldosFinales.disponible?.importe ||
+          latestFile.saldosFinales.contable?.importe ||
+          0
+        );
 
         let totalCredits = 0;
         let totalDebits = 0;
@@ -251,6 +272,7 @@ function App() {
     setSummary(null);
     setFilesProcessed(0);
     setSequenceValidation(null);
+    setCurrencyType(null);
     setCurrentPage(1);
     setSearchTerm('');
   };
@@ -488,6 +510,15 @@ function App() {
                       {filesProcessed > 1 && (
                         <span className="px-2 py-0.5 bg-cyan-600 text-cyan-100 rounded-full text-xs font-medium">
                           {filesProcessed} archivos
+                        </span>
+                      )}
+                      {currencyType && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          currencyType.tipo === 'MLC'
+                            ? 'bg-green-600 text-green-100'
+                            : 'bg-blue-600 text-blue-100'
+                        }`}>
+                          {currencyType.tipo} ({currencyType.moneda})
                         </span>
                       )}
                     </div>

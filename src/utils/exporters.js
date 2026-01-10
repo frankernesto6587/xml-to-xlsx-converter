@@ -164,8 +164,9 @@ export function exportToPDF(data, fileName = 'extracto.pdf', options = {}) {
   doc.text(`Saldo Inicial: $${parseFloat(data.saldoInicial?.importe || 0).toLocaleString('es-ES', {minimumFractionDigits: 2})}`, 14, 25);
   doc.text(`Total Transacciones: ${data.transactions.length}`, 14, 30);
 
-  if (data.saldosFinales?.disponible) {
-    doc.text(`Saldo Final: $${parseFloat(data.saldosFinales.disponible.importe || 0).toLocaleString('es-ES', {minimumFractionDigits: 2})}`, 14, 35);
+  const saldoFinalImporte = data.saldosFinales?.disponible?.importe || data.saldosFinales?.contable?.importe;
+  if (saldoFinalImporte) {
+    doc.text(`Saldo Final: $${parseFloat(saldoFinalImporte).toLocaleString('es-ES', {minimumFractionDigits: 2})}`, 14, 35);
   }
 
   // Prepare table data

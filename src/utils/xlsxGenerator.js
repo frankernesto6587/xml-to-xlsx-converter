@@ -331,6 +331,6 @@ export function getSummary(data) {
     debits,
     totalCredits: totalCredits.toFixed(2),
     totalDebits: totalDebits.toFixed(2),
-    saldoFinal: data.saldosFinales.disponible?.importe || '0.00',
+    saldoFinal: data.saldosFinales.disponible?.importe || data.saldosFinales.contable?.importe || '0.00',
   };
 }
