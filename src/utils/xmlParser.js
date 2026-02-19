@@ -131,7 +131,8 @@ function extractObservationData(observ) {
 
   // Extract ordenante name
   const ordenanteMatch = observ.match(/ORDENANTE NOMBRE:([^|]+)/i) ||
-                        observ.match(/ORDENADA POR:\s*([^P]+?)(?:PAN:|$)/i);
+                        observ.match(/ORDENADA POR:\s*(.+?)\s*(?:PAN:|$)/i) ||
+                        observ.match(/OTR_DATOS="NOMBRE:([^|"]+)/i);
   if (ordenanteMatch) {
     data.ordenante_nombre = ordenanteMatch[1].trim();
   }
@@ -142,19 +143,21 @@ function extractObservationData(observ) {
     data.ordenante_ci = ciMatch[1].trim();
   }
 
-  // Extract card/PAN
-  const panMatch = observ.match(/(?:PAN|Tarjeta)(?:#|RED)?:\s*(\d+X+\d+)/i);
+  // Extract card/PAN - prefer Tarjeta RED (complete 16 digits) over masked versions
+  const panMatch = observ.match(/Tarjeta\s*RED:\s*(\d{16})/i) ||
+                   observ.match(/(?:PAN|TARJETA)\s*(?:#|BT)?:\s*(\d+X+\d+)/i);
   if (panMatch) {
     data.ordenante_tarjeta = panMatch[1].trim();
   }
 
-  // Extract account numbers
-  const cuentaOrdenMatch = observ.match(/NUM_CUENTA="(\d+)"/);
+  // Extract account numbers - XML format (CLI_ORDENA)
+  const cuentaOrdenMatch = observ.match(/CLI_ORDENA[^>]*NUM_CUENTA="(\d+)"/);
   if (cuentaOrdenMatch) {
     data.ordenante_cuenta = cuentaOrdenMatch[1].trim();
   }
 
-  const cuentaBenefMatch = observ.match(/BENEFICIARIO:\s*(\d+)/i);
+  const cuentaBenefMatch = observ.match(/BENEFICIARIO:\s*(\d+)/i) ||
+                          observ.match(/(?:Tarjeta#:\s*\S+)ID:(\d{10,})/i);
   if (cuentaBenefMatch) {
     data.beneficiario_cuenta = cuentaBenefMatch[1].trim();
   }
